@@ -1,12 +1,13 @@
 // Command quire serves a directory of Markdown files through the Quire
 // reader, a single-page app built by Vite from web/ and embedded from
-// web/dist, so the binary needs nothing else at runtime.
+// web/dist (see the quire package at the repository root), so the binary
+// needs nothing else at runtime.
 //
-//	make build                        # build the web app, then the binary
+//	go install github.com/jianyuan/quire/cmd/quire@latest
 //
-//	go run .                          # serve the current directory on http://127.0.0.1:8080
-//	go run . ~/docs                   # serve another directory
-//	go run . -addr :3000 ~/notes      # listen on every interface, port 3000
+//	quire                             # serve the current directory on http://127.0.0.1:8080
+//	quire ~/docs                      # serve another directory
+//	quire -addr :3000 ~/notes         # listen on every interface, port 3000
 //
 // Routes:
 //
@@ -17,12 +18,8 @@
 //	GET /...        the reader, which routes on the path client-side
 package main
 
-//go:generate pnpm --dir web install --frozen-lockfile
-//go:generate pnpm --dir web build
-
 import (
 	"bytes"
-	"embed"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -32,16 +29,13 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/jianyuan/quire"
 )
-
-//go:embed all:web/dist
-var dist embed.FS
-
-//go:embed THIRD_PARTY_NOTICES.md
-var notices []byte
 
 var skipDirs = map[string]bool{"node_modules": true, "vendor": true}
 
@@ -69,7 +63,7 @@ func main() {
 	}
 	fsys := root.FS()
 
-	web, err := fs.Sub(dist, "web/dist")
+	web, err := fs.Sub(quire.Dist, "web/dist")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,7 +75,7 @@ func main() {
 	if err != nil {
 		log.Fatal("web/dist/licenses.md is missing; run make build: ", err)
 	}
-	licenses := append(append(notices, '\n'), webLicenses...)
+	licenses := slices.Concat(quire.Notices, []byte{'\n'}, webLicenses)
 
 	started := time.Now()
 	mux := http.NewServeMux()
