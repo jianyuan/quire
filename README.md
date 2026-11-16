@@ -32,7 +32,7 @@ Keyboard shortcuts:
 
 ## Read in the browser
 
-To read without installing anything, open [jianyuan.github.io/quire](https://jianyuan.github.io/quire/) and pick a Markdown file or a folder, or drop one on the page. The page reads the files in your browser and doesn't upload them. Links between files and images in the folder work as they do in the app.
+To read without installing anything, open [quire.jian.fyi](https://quire.jian.fyi) and pick a Markdown file or a folder, or drop one on the page. The page reads the files in your browser and doesn't upload them. Links between files and images in the folder work as they do in the app.
 
 The browser forgets the files when you reload, so you have to open them again. For a folder you read often, install the app.
 
