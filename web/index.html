@@ -316,6 +316,7 @@
                 >
                     <a
                         href="/"
+                        id="home"
                         data-internal="1"
                         class="flex items-baseline gap-2 px-3"
                     >
@@ -325,6 +326,10 @@
                             class="truncate font-mono text-xs text-base-content/60"
                         ></span>
                     </a>
+                    <div id="open-local" class="mx-1 grid grid-cols-2 gap-2" hidden>
+                        <label for="open-file" class="btn btn-sm border-base-300 bg-base-100">Open file</label>
+                        <label for="open-folder" class="btn btn-sm border-base-300 bg-base-100">Open folder</label>
+                    </div>
                     <label class="input input-sm mx-1 w-auto" for="filter">
                         <svg
                             width="14"
@@ -353,10 +358,42 @@
                         class="mt-auto flex items-baseline justify-between gap-2 px-3 text-xs text-base-content/60"
                     >
                         <span id="tree-count"></span>
-                        <a href="/licenses" class="link link-hover">Licenses</a>
+                        <a href="/licenses" id="licenses" class="link link-hover"
+                            >Licenses</a
+                        >
                     </p>
                 </aside>
             </div>
         </div>
+
+        <!-- The static build (vite build --mode pages) reads files from disk. -->
+        <input
+            id="open-file"
+            type="file"
+            accept=".md,.markdown,.mdown,text/markdown"
+            multiple
+            hidden
+        />
+        <input id="open-folder" type="file" webkitdirectory hidden />
+        <template id="welcome">
+            <p>
+                Open a Markdown file, or a whole folder of them, to read it
+                with a table of contents, reading time and links between files.
+            </p>
+            <div class="flex flex-wrap gap-2 font-sans">
+                <label for="open-file" class="btn btn-primary">Open a file</label>
+                <label for="open-folder" class="btn">Open a folder</label>
+            </div>
+            <p data-note class="text-error" hidden></p>
+            <p class="text-base-content/70">
+                You can also drop files or a folder anywhere on this page.
+                Quire reads them in your browser and doesn't upload them.
+            </p>
+            <p class="text-base-content/70">
+                To read a folder without opening it each time, run the
+                <a href="https://github.com/jianyuan/quire">Quire app</a> on
+                your computer.
+            </p>
+        </template>
     </body>
 </html>
