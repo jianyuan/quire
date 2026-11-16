@@ -25,13 +25,31 @@ Keyboard shortcuts:
 
 ## Run it
 
-You need [Go](https://go.dev) 1.27 or later.
+You need [Go](https://go.dev) 1.27 or later. You don't need Node.js.
+
+Install it with `go install`. This puts a `quire` binary in `$(go env GOPATH)/bin`, so make sure that folder is on your `PATH`.
 
 ```sh
-go run .                          # read this folder on http://127.0.0.1:8080
-go run . ~/notes                  # read another folder
-go run . -addr :3000 ~/notes      # listen on port 3000 on every network interface
+go install github.com/jianyuan/quire/cmd/quire@latest
+
+quire                          # read this folder on http://127.0.0.1:8080
+quire ~/notes                  # read another folder
+quire -addr :3000 ~/notes      # listen on port 3000 on every network interface
 ```
+
+To try it without installing, use `go run`. Go downloads and builds it on the first run, then reuses the cached build.
+
+```sh
+go run github.com/jianyuan/quire/cmd/quire@latest ~/notes
+```
+
+From a clone of this repository:
+
+```sh
+go run ./cmd/quire ~/notes
+```
+
+Prebuilt binaries for macOS, Linux and Windows are on the [releases page](https://github.com/jianyuan/quire/releases).
 
 Quire only reads files inside the folder you give it. It listens on `127.0.0.1` by default, so other machines can't reach it. Use `-addr` with care, because anyone who can reach the port can read the files in the folder.
 
@@ -41,15 +59,19 @@ Quire only reads files inside the folder you give it. It listens on `127.0.0.1` 
 
 ```sh
 make build    # build bin/quire for this machine
-make dist     # build binaries for macOS, Linux and Windows into dist/
 make run      # build, then serve DIR on ADDR (make run DIR=~/notes)
+make dist     # build release archives for every platform into dist/
 ```
 
 The binaries are about 7 MB each and have no other dependencies.
 
+[GoReleaser](https://goreleaser.com) builds the releases, using the settings in `.goreleaser.yaml`. `make dist` runs it locally through `go run`, so you don't need to install it. It builds for macOS, Linux and Windows on amd64 and arm64.
+
+To publish a release, push a tag such as `v0.1.0`. GitHub Actions runs GoReleaser, which attaches the archives and a `SHA256SUMS` file to a GitHub release.
+
 ## Change the web app
 
-The reader's page is a [Vite](https://vite.dev) app in `web/`, styled with Tailwind CSS and daisyUI. The Go server embeds the built files from `web/dist`. That folder is committed, so `go run` works without Node.js.
+The reader's page is a [Vite](https://vite.dev) app in `web/`, styled with Tailwind CSS and daisyUI. The Go server embeds the built files from `web/dist`. That folder is committed, so `go install` and `go run` work without Node.js.
 
 To work on the page you need Node.js and [pnpm](https://pnpm.io):
 
@@ -59,7 +81,7 @@ make dev        # run Vite and the Go server together, with live reload
 make web        # rebuild web/dist
 ```
 
-After changing anything in `web/`, run `make web` and commit `web/dist` with your change. `make check-web` fails if `web/dist` is out of date, so you can run it in CI.
+After changing anything in `web/`, run `make web` and commit `web/dist` with your change. `make check-web` fails if `web/dist` is out of date. CI runs it on every push and pull request.
 
 ## Licences
 

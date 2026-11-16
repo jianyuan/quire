@@ -1,0 +1,34 @@
+# Builds the release binaries. CI runs it on v* tags. Locally,
+# `make dist` builds a snapshot into dist/ without publishing.
+version: 2
+
+project_name: quire
+
+builds:
+  - main: ./cmd/quire
+    binary: quire
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+      - THIRD_PARTY_NOTICES.md
+
+checksum:
+  name_template: SHA256SUMS
+
+changelog:
+  use: github
+  sort: asc
