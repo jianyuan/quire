@@ -39,6 +39,9 @@ jobs:
       - name: Build
         run: make build
 
+      - name: Build the GitHub Pages site
+        run: make pages
+
       - name: Smoke test
         run: |
           ./bin/quire -addr 127.0.0.1:8080 . &

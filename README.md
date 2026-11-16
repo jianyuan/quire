@@ -30,6 +30,12 @@ Keyboard shortcuts:
 | `t` | Switch theme |
 | `Esc` | Close menus |
 
+## Read in the browser
+
+To read without installing anything, open [quire.jian.fyi](https://quire.jian.fyi) and pick a Markdown file or a folder, or drop one on the page. The page reads the files in your browser and doesn't upload them. Links between files and images in the folder work as they do in the app.
+
+The browser forgets the files when you reload, so you have to open them again. For a folder you read often, install the app.
+
 ## Run it
 
 On macOS or Linux, install it with [Homebrew](https://brew.sh):
@@ -99,6 +105,8 @@ make web        # rebuild web/dist
 ```
 
 After changing anything in `web/`, run `make web` and commit `web/dist` with your change. `make check-web` fails if `web/dist` is out of date. CI runs it on every push and pull request.
+
+The same app also builds as a static site for GitHub Pages, which opens files from the visitor's disk instead of asking a server. `make dev-pages` runs it in Vite and `make pages` builds it into `web/dist-pages`, which isn't committed. The Pages workflow builds and publishes it when `web/` changes on `main`.
 
 ## Licences
 

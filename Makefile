@@ -23,6 +23,9 @@ dev: web/dist/index.html web/node_modules ## Run Vite and the Go server together
 	  go run ./cmd/quire -addr $(ADDR) $(DIR) & \
 	  pnpm --dir web dev
 
+dev-pages: web/node_modules ## Run the static GitHub Pages build in Vite
+	pnpm --dir web dev --mode pages
+
 run: build ## Build, then serve DIR on ADDR
 	./$(BIN) -addr $(ADDR) $(DIR)
 
@@ -40,11 +43,14 @@ web: web/dist/index.html ## Build the web app into web/dist
 
 build: $(BIN) ## Build the single binary for this machine
 
+pages: web/node_modules ## Build the static GitHub Pages site into web/dist-pages
+	pnpm --dir web build --mode pages
+
 dist: web/dist/index.html ## Build release archives into dist/, without publishing
 	$(GORELEASER) release --snapshot --clean
 
-clean: ## Remove binaries (keeps the committed web/dist)
-	rm -rf bin dist
+clean: ## Remove binaries and the Pages build (keeps the committed web/dist)
+	rm -rf bin dist web/dist-pages
 
 # File targets: each step reruns only when its inputs change.
 web/node_modules: web/package.json web/pnpm-lock.yaml
@@ -57,4 +63,4 @@ web/dist/index.html: web/node_modules $(WEB_SRC)
 $(BIN): web/dist/index.html $(GO_SRC)
 	CGO_ENABLED=0 go build $(GOFLAGS) -o $@ ./cmd/quire
 
-.PHONY: help install dev run check check-web web build dist clean
+.PHONY: help install dev dev-pages run check check-web web build pages dist clean

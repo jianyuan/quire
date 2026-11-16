@@ -89,6 +89,7 @@ body {
 .wordmark { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 1.25rem; letter-spacing: -0.01em; }
 .eyebrow { font-size: 0.75rem; letter-spacing: 0.09em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
 .read-bar { position: absolute; inset: auto 0 -1px 0; height: 2px; border-radius: 0; background: transparent; }
+body.dropping .drawer-content { outline: 2px dashed var(--color-primary); outline-offset: -8px; }
 .seg:checked { --btn-color: var(--color-neutral); --btn-fg: var(--color-neutral-content); }
 .tabular { font-variant-numeric: tabular-nums; }
 

@@ -1,5 +1,11 @@
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { fromDropped, fromPicked } from "./local.js";
+
+// The Go server lists the folder and serves its files. The static build
+// for GitHub Pages has no server, so visitors open files from their own
+// disk, and the open file goes in ?p= because Pages serves a single page.
+const STATIC = import.meta.env.MODE === "pages";
 
 const WPM = 238;
 const THEMES = ["auto", "paper", "sepia", "ink"];
@@ -18,7 +24,9 @@ const store = {
 let settings = Object.assign({ theme: "auto", font: "serif", size: 19, measure: 66, leading: 1.7 }, store.get("quire.settings", {}));
 let positions = store.get("quire.positions", {});
 
-const site = { name: "", files: [], fileSet: new Set(), folders: new Set(), tree: null, ordered: [] };
+// In the static build, local maps each path to a File from disk and blobs
+// holds the object URLs made for images and attachments.
+const site = { name: "", files: [], fileSet: new Set(), folders: new Set(), tree: null, ordered: [], local: null, blobs: new Map() };
 let current = null; // { file, words }, { dir } or { missing }
 let headings = [];
 let loadToken = 0;
@@ -35,6 +43,20 @@ const stem = (p) => basename(p).replace(/\.(md|markdown|mdown)$/i, "");
 const isIndex = (p) => /^(readme|index)\.(md|markdown|mdown)$/i.test(basename(p));
 const isMarkdown = (p) => /\.(md|markdown|mdown)$/i.test(p);
 
+// The reader's address for a file or folder, and the path in an address.
+const pageUrl = (p) => STATIC ? location.pathname + (p ? "?p=" + encodePath(p) : "") : "/" + encodePath(p);
+const pathOf = (u) => STATIC ? u.searchParams.get("p") ?? "" : pathFromUrl(u);
+
+// Where the browser can load a file that isn't Markdown, such as an image,
+// or null if the static build wasn't given it.
+function rawUrl(p) {
+  if (!STATIC) return "/raw/" + encodePath(p);
+  const file = site.local.get(p);
+  if (!file) return null;
+  if (!site.blobs.has(p)) site.blobs.set(p, URL.createObjectURL(file));
+  return site.blobs.get(p);
+}
+
 function indexOf(dir) {
   return site.files.find((f) => dirname(f) === dir && isIndex(f)) || null;
 }
@@ -44,7 +66,7 @@ function indexOf(dir) {
 function resolve(p) {
   p = p.replace(/^\/+/, "");
   if (p === "" || p === "./") {
-    const idx = indexOf("");
+    const idx = indexOf("") || (site.files.length === 1 ? site.files[0] : null);
     return idx ? { file: idx } : { dir: "" };
   }
   if (site.fileSet.has(p)) return { file: p };
@@ -96,10 +118,10 @@ function rewriteLinks(root, file) {
     const p = pathFromUrl(u).replace(/^\/+/, "");
     const hit = resolve(p);
     if (hit) {
-      a.href = "/" + encodePath(hit.file || hit.dir) + u.hash;
+      a.href = pageUrl(hit.file || hit.dir) + u.hash;
       a.dataset.internal = "1";
-    } else if (!isMarkdown(p) && /\.[a-z0-9]+$/i.test(p)) {
-      a.href = "/raw/" + encodePath(p);
+    } else if (!isMarkdown(p) && /\.[a-z0-9]+$/i.test(p) && rawUrl(p)) {
+      a.href = rawUrl(p);
       a.target = "_blank";
     } else {
       a.classList.add("broken");
@@ -110,7 +132,10 @@ function rewriteLinks(root, file) {
   root.querySelectorAll("img[src]").forEach((img) => {
     const src = img.getAttribute("src");
     if (/^[a-z][a-z0-9+.-]*:/i.test(src) || src.startsWith("//")) return;
-    img.src = "/raw/" + encodePath(pathFromUrl(new URL(src, base)).replace(/^\/+/, ""));
+    const p = pathFromUrl(new URL(src, base)).replace(/^\/+/, "");
+    const url = rawUrl(p);
+    if (url) img.src = url;
+    else { img.removeAttribute("src"); img.title = `No file at ${p}`; }
     img.loading = "lazy";
   });
 }
@@ -173,7 +198,7 @@ function flatten(node, out = []) {
 
 function fileLink(f, showDir = false) {
   const a = document.createElement("a");
-  a.href = "/" + encodePath(f);
+  a.href = pageUrl(f);
   a.dataset.internal = "1";
   a.dataset.path = f;
   a.title = f;
@@ -259,11 +284,11 @@ function renderCrumbs(p) {
     li.appendChild(el);
     ul.appendChild(li);
   };
-  add(site.name, "/");
+  add(site.name, pageUrl(""));
   const parts = p.replace(/\/$/, "").split("/").filter(Boolean);
   parts.forEach((part, i) => {
     const last = i === parts.length - 1;
-    add(last ? stem(part) : part, last ? null : "/" + encodePath(parts.slice(0, i + 1).join("/") + "/"));
+    add(last ? stem(part) : part, last ? null : pageUrl(parts.slice(0, i + 1).join("/") + "/"));
   });
 }
 
@@ -294,7 +319,7 @@ function renderFooter() {
   const i = site.ordered.indexOf(current.file);
   const make = (f, label, end) => {
     const a = document.createElement("a");
-    a.href = "/" + encodePath(f);
+    a.href = pageUrl(f);
     a.dataset.internal = "1";
     a.className = "flex min-w-0 flex-col gap-0.5 rounded-box border border-base-300 px-4 py-3 hover:bg-base-200" + (end ? " text-end sm:col-start-2" : "");
     const small = document.createElement("span");
@@ -317,7 +342,7 @@ function showPage({ title, titleId, eyebrow, path, body }) {
   $("#doc-eyebrow").textContent = eyebrow;
   $("#doc-path").textContent = path;
   $("#doc-body").replaceChildren(body);
-  document.title = `${title} · ${site.name}`;
+  document.title = site.name ? `${title} · ${site.name}` : title;
   renderToc();
   renderFooter();
   markActive();
@@ -325,7 +350,7 @@ function showPage({ title, titleId, eyebrow, path, body }) {
 
 function linkTo(path, label) {
   const a = document.createElement("a");
-  a.href = "/" + encodePath(path);
+  a.href = pageUrl(path);
   a.dataset.internal = "1";
   a.textContent = label;
   return a;
@@ -353,9 +378,10 @@ function message(text) {
 
 async function route({ restore = false, scrollY = null } = {}) {
   const token = ++loadToken;
-  const raw = pathFromUrl(new URL(location.href)).replace(/^\/+/, "");
-  const hit = resolve(raw);
   closeDrawer();
+  if (STATIC && !site.local) return showWelcome();
+  const raw = pathOf(new URL(location.href)).replace(/^\/+/, "");
+  const hit = resolve(raw);
 
   if (!hit) {
     current = { missing: raw };
@@ -365,8 +391,8 @@ async function route({ restore = false, scrollY = null } = {}) {
   }
 
   // Use the file's own path as the address, so relative links resolve from it.
-  const canonical = "/" + encodePath(hit.file || hit.dir);
-  if (canonical !== location.pathname) history.replaceState(history.state, "", canonical + location.hash);
+  const canonical = pageUrl(hit.file || hit.dir);
+  if (canonical !== location.pathname + location.search) history.replaceState(history.state, "", canonical + location.hash);
 
   if (hit.dir !== undefined) {
     current = { dir: hit.dir };
@@ -377,14 +403,19 @@ async function route({ restore = false, scrollY = null } = {}) {
 
   let md;
   try {
-    const res = await fetch("/raw/" + encodePath(hit.file), { cache: "no-cache" });
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    md = await res.text();
+    if (STATIC) {
+      md = await site.local.get(hit.file).text();
+    } else {
+      const res = await fetch("/raw/" + encodePath(hit.file), { cache: "no-cache" });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      md = await res.text();
+    }
   } catch (err) {
     if (token !== loadToken) return;
     current = { file: hit.file, words: 0 };
     renderCrumbs(hit.file);
-    showPage({ title: stem(hit.file), eyebrow: "", path: hit.file, body: message(`Couldn't load this file (${err.message}). Is the server still running?`) });
+    const hint = STATIC ? "Was it moved or deleted? Open it again." : "Is the server still running?";
+    showPage({ title: stem(hit.file), eyebrow: "", path: hit.file, body: message(`Couldn't load this file (${err.message}). ${hint}`) });
     return;
   }
   if (token !== loadToken) return;
@@ -444,11 +475,11 @@ document.addEventListener("click", (e) => {
     return;
   }
   const url = new URL(a.href);
-  if (url.pathname === location.pathname && url.hash) {
+  if (url.pathname + url.search === location.pathname + location.search && url.hash) {
     history.replaceState(history.state, "", url.hash);
     scrollToHash(url.hash);
   } else {
-    navigate(url.pathname + url.hash);
+    navigate(url.pathname + url.search + url.hash);
   }
 });
 
@@ -564,26 +595,79 @@ document.addEventListener("keydown", (e) => {
 
 /* ---------- Start ---------- */
 
+function setFiles(name, files) {
+  site.name = name;
+  site.files = files;
+  site.fileSet = new Set(files);
+  site.folders = new Set();
+  site.tree = buildTree(files);
+  site.ordered = flatten(site.tree);
+  $("#root-name").textContent = name + "/";
+  $("#tree-count").textContent = `${files.length} Markdown ${files.length === 1 ? "file" : "files"}`;
+  renderTree();
+}
+
 async function boot() {
   applySettings();
+  if (STATIC) return bootStatic();
   try {
     const res = await fetch("/api/tree", { cache: "no-store" });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     const data = await res.json();
-    site.name = data.name;
-    site.files = data.files || [];
+    setFiles(data.name, data.files || []);
   } catch (err) {
     $("#doc-title").textContent = "Couldn't list files";
     $("#doc-body").textContent = `The server didn't answer (${err.message}). Start it with "go run ." and reload.`;
     return;
   }
-  site.fileSet = new Set(site.files);
-  site.tree = buildTree(site.files);
-  site.ordered = flatten(site.tree);
-  $("#root-name").textContent = site.name + "/";
-  $("#tree-count").textContent = `${site.files.length} Markdown ${site.files.length === 1 ? "file" : "files"}`;
-  renderTree();
   await route({ restore: true });
+}
+
+/* ---------- Static build: files from disk ---------- */
+
+function showWelcome(note) {
+  current = null;
+  $("#crumbs ul").replaceChildren();
+  const body = $("#welcome").content.cloneNode(true);
+  if (note) Object.assign(body.querySelector("[data-note]"), { textContent: note, hidden: false });
+  showPage({ title: "Read Markdown", eyebrow: "", path: "", body });
+  finishScroll(0);
+}
+
+function openLocal({ name, files }) {
+  const markdown = [...files.keys()].filter(isMarkdown).sort();
+  if (!markdown.length) return showWelcome("There are no Markdown files in what you opened. Quire reads .md, .markdown and .mdown files.");
+  savePosition();
+  site.blobs.forEach((url) => URL.revokeObjectURL(url));
+  site.blobs.clear();
+  site.local = files;
+  setFiles(name, markdown);
+  history.pushState(null, "", pageUrl(""));
+  route({ restore: true });
+}
+
+function bootStatic() {
+  $("#home").href = pageUrl("");
+  $("#licenses").href = "licenses.txt";
+  $("#open-local").hidden = false;
+  document.querySelectorAll("#open-file, #open-folder").forEach((input) => {
+    input.addEventListener("change", () => {
+      if (input.files.length) openLocal(fromPicked(input.files));
+      input.value = "";
+    });
+  });
+  addEventListener("dragover", (e) => {
+    if (!e.dataTransfer.types.includes("Files")) return;
+    e.preventDefault();
+    document.body.classList.add("dropping");
+  });
+  addEventListener("dragleave", (e) => { if (!e.relatedTarget) document.body.classList.remove("dropping"); });
+  addEventListener("drop", async (e) => {
+    e.preventDefault();
+    document.body.classList.remove("dropping");
+    openLocal(await fromDropped(e.dataTransfer));
+  });
+  showWelcome();
 }
 
 boot();
