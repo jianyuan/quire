@@ -32,3 +32,27 @@ checksum:
 changelog:
   use: github
   sort: asc
+
+# Publishes a cask to github.com/jianyuan/homebrew-tap, so people can run
+# `brew install --cask jianyuan/tap/quire`. The release workflow's own token
+# can't write to another repository, so this needs a personal access token
+# in the HOMEBREW_TAP_GITHUB_TOKEN secret.
+homebrew_casks:
+  - name: quire
+    binaries: [quire]
+    repository:
+      owner: jianyuan
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Casks
+    homepage: https://github.com/jianyuan/quire
+    description: Reader for folders of Markdown files
+    commit_msg_template: "Update quire to {{ .Tag }}"
+    # The binaries aren't signed with an Apple Developer ID, so macOS would
+    # block them on first run. Removing the quarantine flag lets them start.
+    hooks:
+      post:
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/quire"]
+          end

@@ -32,13 +32,23 @@ Keyboard shortcuts:
 
 ## Run it
 
-You need [Go](https://go.dev) 1.27 or later. You don't need Node.js.
+On macOS or Linux, install it with [Homebrew](https://brew.sh):
 
-Install it with `go install`. This puts a `quire` binary in `$(go env GOPATH)/bin`, so make sure that folder is on your `PATH`.
+```sh
+brew install --cask jianyuan/tap/quire
+```
+
+The macOS binaries aren't signed with an Apple Developer ID. The cask removes the quarantine flag after installing, so macOS doesn't block the first run.
+
+With [Go](https://go.dev) 1.27 or later, install it with `go install`. You don't need Node.js. This puts a `quire` binary in `$(go env GOPATH)/bin`, so make sure that folder is on your `PATH`.
 
 ```sh
 go install github.com/jianyuan/quire/cmd/quire@latest
+```
 
+Then run it:
+
+```sh
 quire                          # read this folder on http://127.0.0.1:8080
 quire ~/notes                  # read another folder
 quire -addr :3000 ~/notes      # listen on port 3000 on every network interface
