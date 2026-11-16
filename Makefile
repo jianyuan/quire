@@ -30,6 +30,11 @@ check: ## Vet and format-check the Go code
 	go vet ./...
 	@test -z "$$(gofmt -l $(wildcard *.go))" || { gofmt -l $(wildcard *.go); exit 1; }
 
+check-web: web/node_modules ## Fail if the committed web/dist is stale
+	pnpm --dir web build
+	@test -z "$$(git status --porcelain -- web/dist)" || \
+	  { git status --short -- web/dist; echo "web/dist is out of date: run make web and commit it"; exit 1; }
+
 ##@ Build
 web: web/dist/index.html ## Build the web app into web/dist
 
@@ -42,8 +47,8 @@ dist: web/dist/index.html ## Cross-compile binaries for every platform
 	  CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build $(GOFLAGS) -o dist/quire-$$os-$$arch$$ext . || exit 1; \
 	done
 
-clean: ## Remove build output (keeps node_modules)
-	rm -rf bin dist web/dist
+clean: ## Remove binaries (keeps the committed web/dist)
+	rm -rf bin dist
 
 # File targets: each step reruns only when its inputs change.
 web/node_modules: web/package.json web/pnpm-lock.yaml
@@ -56,4 +61,4 @@ web/dist/index.html: web/node_modules $(WEB_SRC)
 $(BIN): web/dist/index.html $(GO_SRC)
 	CGO_ENABLED=0 go build $(GOFLAGS) -o $@ .
 
-.PHONY: help install dev run check web build dist clean
+.PHONY: help install dev run check check-web web build dist clean
