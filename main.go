@@ -185,7 +185,7 @@ func isMarkdown(name string) bool {
 }
 
 func hidden(name string) bool {
-	for _, part := range strings.Split(name, "/") {
+	for part := range strings.SplitSeq(name, "/") {
 		if strings.HasPrefix(part, ".") {
 			return true
 		}
