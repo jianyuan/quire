@@ -17,22 +17,22 @@ importers:
       '@fontsource/ibm-plex-mono':
         specifier: ^5.3.0
         version: 5.3.0
+      daisyui:
+        specifier: 5.8.1
+        version: 5.8.1
       dompurify:
         specifier: 3.4.18
         version: 3.4.18
       marked:
         specifier: 18.2.0
         version: 18.2.0
+      tailwindcss:
+        specifier: ^4.3.5
+        version: 4.3.5
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.3.5
         version: 4.3.5(vite@8.3.8(jiti@2.7.0))
-      daisyui:
-        specifier: 5.8.1
-        version: 5.8.1
-      tailwindcss:
-        specifier: ^4.3.5
-        version: 4.3.5
       vite:
         specifier: ^8.3.8
         version: 8.3.8(jiti@2.7.0)

@@ -13,6 +13,7 @@
 //	GET /api/tree   JSON list of Markdown files under the directory
 //	GET /raw/{path} a file from the directory (Markdown, images, PDFs...)
 //	GET /assets/... the reader's hashed scripts, styles and fonts
+//	GET /licenses   licences of everything bundled into the binary
 //	GET /...        the reader, which routes on the path client-side
 package main
 
@@ -38,6 +39,9 @@ import (
 
 //go:embed all:web/dist
 var dist embed.FS
+
+//go:embed THIRD_PARTY_NOTICES.md
+var notices []byte
 
 var skipDirs = map[string]bool{"node_modules": true, "vendor": true}
 
@@ -73,6 +77,11 @@ func main() {
 	if err != nil {
 		log.Fatal("web/dist/index.html is missing; run make build: ", err)
 	}
+	webLicenses, err := fs.ReadFile(web, "licenses.md")
+	if err != nil {
+		log.Fatal("web/dist/licenses.md is missing; run make build: ", err)
+	}
+	licenses := append(append(notices, '\n'), webLicenses...)
 
 	started := time.Now()
 	mux := http.NewServeMux()
@@ -116,6 +125,12 @@ func main() {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		http.FileServerFS(web).ServeHTTP(w, r)
+	})
+
+	mux.HandleFunc("GET /licenses", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		http.ServeContent(w, r, "licenses.txt", started, bytes.NewReader(licenses))
 	})
 
 	// Every other path is a page in the reader, which works out what to show.

@@ -3,7 +3,11 @@
 @import "@fontsource-variable/atkinson-hyperlegible-next/wght.css";
 @import "@fontsource/ibm-plex-mono/400.css";
 @import "@fontsource/ibm-plex-mono/500.css";
-@import "tailwindcss";
+/* Tailwind's automatic detection would also scan the committed web/dist,
+   so each build would depend on the one before. List the sources instead. */
+@import "tailwindcss" source(none);
+@source "../index.html";
+@source "./main.js";
 @plugin "daisyui";
 
 @theme {
