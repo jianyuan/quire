@@ -44,13 +44,13 @@
                                 <ul></ul>
                             </nav>
                         </div>
-                        <div class="flex shrink-0 items-center gap-1">
+                        <div class="flex shrink-0 items-baseline gap-1">
                             <span
                                 id="time-left"
                                 class="tabular hidden text-xs text-base-content/60 sm:inline"
                             ></span>
                             <details
-                                class="dropdown dropdown-end"
+                                class="dropdown dropdown-end flex"
                                 id="settings"
                             >
                                 <summary
@@ -303,10 +303,13 @@
                     class="drawer-overlay"
                 ></label>
                 <aside
-                    class="flex min-h-full w-72 flex-col gap-3 border-e border-base-300 bg-base-200 px-2 pb-8"
+                    class="flex min-h-full w-72 flex-col gap-3 border-e border-base-300 bg-base-200 px-2"
                     style="
                         padding-top: calc(
                             env(safe-area-inset-top, 0px) + 0.9rem
+                        );
+                        padding-bottom: calc(
+                            env(safe-area-inset-bottom, 0px) + 0.9rem
                         );
                         padding-left: max(8px, env(safe-area-inset-left, 0px));
                     "
