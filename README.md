@@ -82,7 +82,7 @@ make dist     # build release archives for every platform into dist/
 
 The binaries are about 7 MB each and have no other dependencies.
 
-[GoReleaser](https://goreleaser.com) builds the releases, using the settings in `.goreleaser.yaml`. `make dist` runs it locally through `go run`, so you don't need to install it. It builds for macOS, Linux and Windows on amd64 and arm64.
+[GoReleaser](https://goreleaser.com) builds the releases, using the settings in `.goreleaser.yaml`. It is pinned as a Go tool in `go.mod`, and `make dist` runs it locally with `go tool`, so you don't need to install it. It builds for macOS, Linux and Windows on amd64 and arm64.
 
 To publish a release, push a tag such as `v0.1.0`. GitHub Actions runs GoReleaser, which attaches the archives and a `SHA256SUMS` file to a GitHub release.
 

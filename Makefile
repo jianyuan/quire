@@ -2,8 +2,7 @@ BIN        := bin/quire
 DIR        ?= .
 ADDR       ?= 127.0.0.1:8080
 GOFLAGS    := -trimpath -ldflags="-s -w"
-# GoReleaser runs through go run, so you don't need to install it.
-GORELEASER := go run github.com/goreleaser/goreleaser/v2@v2.20.2
+GORELEASER := go tool goreleaser
 
 WEB_SRC := web/index.html web/vite.config.js web/package.json $(shell find web/src -type f)
 GO_SRC  := go.mod $(wildcard *.go cmd/quire/*.go)
