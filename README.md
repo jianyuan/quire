@@ -4,7 +4,14 @@ Quire is a reader for folders of Markdown files. Point it at a folder and it ser
 
 I built it to read my notes and project docs with proper typography, without setting up a static site generator.
 
+![Quire showing a note about pour-over coffee in a desktop browser, with the file sidebar on the left and the table of contents on the right, next to the same note on a phone in the sepia theme](docs/hero.webp)
+
 ## What it does
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.webp">
+  <img src="docs/screenshot-light.webp" alt="The Quire reader showing a note about pour-over coffee, with the file sidebar, reading time and table of contents">
+</picture>
 
 - Lists every Markdown file in the folder in a sidebar. It skips hidden folders such as `.git` and dependency folders such as `node_modules`.
 - Opens `README.md` or `index.md` when you visit a folder.
