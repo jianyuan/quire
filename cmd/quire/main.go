@@ -12,6 +12,7 @@
 // Routes:
 //
 //	GET /api/tree   JSON list of Markdown files under the directory
+//	GET /api/texts  JSON map of each Markdown file's path to its contents
 //	GET /raw/{path} a file from the directory (Markdown, images, PDFs...)
 //	GET /assets/... the reader's hashed scripts, styles and fonts
 //	GET /licenses   licences of everything bundled into the binary
@@ -89,6 +90,24 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
 		json.NewEncoder(w).Encode(map[string]any{"name": filepath.Base(abs), "files": files})
+	})
+
+	// The reader searches file contents itself, so it fetches them all at once.
+	mux.HandleFunc("GET /api/texts", func(w http.ResponseWriter, r *http.Request) {
+		files, err := markdownFiles(fsys)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		texts := make(map[string]string, len(files))
+		for _, f := range files {
+			if b, err := fs.ReadFile(fsys, f); err == nil {
+				texts[f] = string(b)
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		json.NewEncoder(w).Encode(texts)
 	})
 
 	mux.HandleFunc("GET /raw/{path...}", func(w http.ResponseWriter, r *http.Request) {

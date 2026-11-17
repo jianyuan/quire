@@ -1,5 +1,6 @@
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { Fzf, byLengthAsc, extendedMatch } from "fzf";
 import { fromDropped, fromPicked } from "./local.js";
 
 // The Go server lists the folder and serves its files. The static build
@@ -26,7 +27,8 @@ let positions = store.get("quire.positions", {});
 
 // In the static build, local maps each path to a File from disk and blobs
 // holds the object URLs made for images and attachments.
-const site = { name: "", files: [], fileSet: new Set(), folders: new Set(), tree: null, ordered: [], local: null, blobs: new Map() };
+// texts caches file contents while a search is open.
+const site = { name: "", files: [], fileSet: new Set(), folders: new Set(), tree: null, ordered: [], local: null, blobs: new Map(), texts: new Map(), fzf: null };
 let current = null; // { file, words }, { dir } or { missing }
 let headings = [];
 let loadToken = 0;
@@ -55,6 +57,13 @@ function rawUrl(p) {
   if (!file) return null;
   if (!site.blobs.has(p)) site.blobs.set(p, URL.createObjectURL(file));
   return site.blobs.get(p);
+}
+
+async function readFile(p) {
+  if (STATIC) return site.local.get(p).text();
+  const res = await fetch("/raw/" + encodePath(p), { cache: "no-cache" });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.text();
 }
 
 function indexOf(dir) {
@@ -196,39 +205,110 @@ function flatten(node, out = []) {
   return out;
 }
 
-function fileLink(f, showDir = false) {
+// Appends text to el, wrapping the characters at the given positions in the
+// path (offset by where text starts in it) in <b> so fuzzy matches stand out.
+function appendHits(el, text, offset, hits) {
+  [...text].forEach((c, i) => {
+    if (!hits?.has(offset + i)) return el.append(c);
+    const b = document.createElement("b");
+    b.className = "text-primary";
+    b.textContent = c;
+    el.append(b);
+  });
+  el.normalize();
+}
+
+function fileLink(f, showDir = false, lines = [], hits = null) {
   const a = document.createElement("a");
   a.href = pageUrl(f);
   a.dataset.internal = "1";
   a.dataset.path = f;
   a.title = f;
+  // Search results put the name and folder on one row that fits the sidebar:
+  // the name keeps its width and the folder takes what's left.
+  const row = showDir ? document.createElement("span") : a;
+  if (showDir) {
+    row.className = "flex min-w-0 basis-full items-baseline gap-2";
+    a.classList.add("flex", "flex-wrap", "max-w-full");
+    a.appendChild(row);
+  }
   const name = document.createElement("span");
-  name.className = "min-w-0 truncate";
-  name.textContent = stem(f);
-  a.appendChild(name);
+  name.className = showDir ? "max-w-full shrink-0 truncate" : "min-w-0 truncate";
+  appendHits(name, stem(f), dirname(f).length, hits);
+  row.appendChild(name);
   if (showDir && dirname(f)) {
     const dir = document.createElement("span");
-    dir.className = "ms-auto shrink-0 truncate font-mono text-[0.7rem] opacity-50";
-    dir.textContent = dirname(f);
-    a.appendChild(dir);
+    dir.className = "ms-auto min-w-0 truncate font-mono text-[0.7rem] opacity-50";
+    appendHits(dir, dirname(f), 0, hits);
+    row.appendChild(dir);
+  }
+  for (const [n, before, match, after] of lines) {
+    const line = document.createElement("span");
+    line.className = "basis-full truncate text-xs opacity-60";
+    const num = document.createElement("span");
+    num.className = "me-2 font-mono opacity-60";
+    num.textContent = n;
+    const mark = document.createElement("mark");
+    mark.textContent = match;
+    line.append(num, before, mark, after);
+    a.appendChild(line);
   }
   return a;
+}
+
+// Up to three matching lines in a file, as [line number, before, match, after].
+function matchingLines(text, re) {
+  const out = [];
+  text.split(/\r?\n/).some((line, i) => {
+    const m = line.match(re);
+    if (m) out.push([i + 1, (m.index > 30 ? "…" : "") + line.slice(Math.max(0, m.index - 30), m.index).trimStart(), m[0], line.slice(m.index + m[0].length, m.index + m[0].length + 80)]);
+    return out.length === 3;
+  });
+  return out;
+}
+
+// Loads every file's text the first time a search needs it, then
+// renders again with matches in the files' contents.
+let loadingTexts = null;
+function loadTexts() {
+  if (loadingTexts) return;
+  const texts = site.texts;
+  const missing = site.files.filter((f) => !texts.has(f));
+  // The server sends every file in one response instead of one request each.
+  // A failed load counts as empty text, so the search stops waiting.
+  const load = STATIC
+    ? Promise.all(missing.map(async (f) => texts.set(f, await readFile(f).catch(() => ""))))
+    : fetch("/api/texts", { cache: "no-store" })
+      .then((res) => res.ok ? res.json() : {})
+      .catch(() => ({}))
+      .then((all) => missing.forEach((f) => texts.set(f, all[f] ?? "")));
+  loadingTexts = load.finally(() => { loadingTexts = null; if (texts === site.texts && $("#filter").value.trim()) renderTree(); });
 }
 
 function renderTree() {
   const ul = $("#tree");
   ul.replaceChildren();
-  const q = $("#filter").value.trim().toLowerCase();
+  const q = $("#filter").value.trim();
   if (q) {
-    const hits = site.files.filter((f) => f.toLowerCase().includes(q));
-    if (!hits.length) {
+    // Names match fuzzily, best first; contents match the text as typed,
+    // ignoring case, like the editors' text search.
+    const named = site.fzf.find(q);
+    const found = new Set(named.map((m) => m.item));
+    const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "iu");
+    const byText = site.files.filter((f) => !found.has(f)).map((f) => [f, matchingLines(site.texts.get(f) ?? "", re)]).filter(([, lines]) => lines.length);
+    const loading = site.texts.size < site.files.length;
+    if (!named.length && !byText.length) {
       const li = document.createElement("li");
       li.className = "px-3 py-2 text-sm text-base-content/60";
-      li.textContent = `No files match “${q}”.`;
+      li.textContent = loading ? "Searching…" : `No files match “${q}”.`;
       ul.appendChild(li);
     }
-    hits.forEach((f) => { const li = document.createElement("li"); li.appendChild(fileLink(f, true)); ul.appendChild(li); });
+    named.forEach((m) => { const li = document.createElement("li"); li.className = "max-w-full"; li.appendChild(fileLink(m.item, true, [], m.positions)); ul.appendChild(li); });
+    byText.forEach(([f, s]) => { const li = document.createElement("li"); li.className = "max-w-full"; li.appendChild(fileLink(f, true, s)); ul.appendChild(li); });
+    if (loading) loadTexts();
   } else {
+    // Drop the cache so the next search sees edits made since.
+    site.texts.clear();
     renderNode(site.tree, ul);
   }
   markActive();
@@ -403,13 +483,7 @@ async function route({ restore = false, scrollY = null } = {}) {
 
   let md;
   try {
-    if (STATIC) {
-      md = await site.local.get(hit.file).text();
-    } else {
-      const res = await fetch("/raw/" + encodePath(hit.file), { cache: "no-cache" });
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      md = await res.text();
-    }
+    md = await readFile(hit.file);
   } catch (err) {
     if (token !== loadToken) return;
     current = { file: hit.file, words: 0 };
@@ -600,7 +674,10 @@ function setFiles(name, files) {
   site.files = files;
   site.fileSet = new Set(files);
   site.folders = new Set();
+  site.texts = new Map();
   site.tree = buildTree(files);
+  // Extended syntax, as in fzf: spaces split terms, 'exact, ^prefix, suffix$, !not.
+  site.fzf = new Fzf(files, { match: extendedMatch, tiebreakers: [byLengthAsc] });
   site.ordered = flatten(site.tree);
   $("#root-name").textContent = name + "/";
   $("#tree-count").textContent = `${files.length} Markdown ${files.length === 1 ? "file" : "files"}`;
