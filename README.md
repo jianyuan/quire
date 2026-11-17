@@ -24,7 +24,7 @@ Keyboard shortcuts:
 
 | Key | Action |
 |---|---|
-| `/` | Find a file |
+| `/` | Search: fuzzy on file names, plain text in contents |
 | `[` | Show or hide the sidebar |
 | `+` and `-` | Change the text size |
 | `t` | Switch theme |
