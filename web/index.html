@@ -7,6 +7,13 @@
             content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
         <title>Quire</title>
+        <script>
+            // Apply the saved theme before the first paint; main.js deferring would flash the system one.
+            try {
+                const t = JSON.parse(localStorage.getItem("quire.settings"))?.theme;
+                if (t && t !== "auto") document.documentElement.dataset.reader = t;
+            } catch {}
+        </script>
         <link rel="stylesheet" href="/src/style.css" />
         <script type="module" src="/src/main.js"></script>
     </head>
@@ -49,183 +56,183 @@
                                 id="time-left"
                                 class="tabular hidden text-xs text-base-content/60 sm:inline"
                             ></span>
-                            <details
-                                class="dropdown dropdown-end flex"
-                                id="settings"
+                            <button
+                                type="button"
+                                popovertarget="settings"
+                                class="btn btn-ghost btn-square btn-sm font-serif text-base"
+                                aria-label="Reading settings"
+                                title="Reading settings"
                             >
-                                <summary
-                                    class="btn btn-ghost btn-square btn-sm font-serif text-base"
-                                    aria-label="Reading settings"
-                                    title="Reading settings"
-                                >
-                                    Aa
-                                </summary>
-                                <div
-                                    class="dropdown-content z-30 mt-2 w-[min(19rem,calc(100vw-32px))] rounded-box border border-base-300 bg-base-100 p-4 shadow-xl"
-                                >
-                                    <div class="flex flex-col gap-4">
-                                        <div class="flex flex-col gap-1.5">
-                                            <span
-                                                class="eyebrow text-base-content/60"
-                                                >Theme</span
-                                            >
-                                            <div class="join w-full">
-                                                <input
-                                                    class="seg join-item btn btn-sm flex-1"
-                                                    type="radio"
-                                                    name="theme"
-                                                    value="auto"
-                                                    aria-label="Auto"
-                                                    id="theme-auto"
-                                                />
-                                                <input
-                                                    class="seg join-item btn btn-sm flex-1"
-                                                    type="radio"
-                                                    name="theme"
-                                                    value="paper"
-                                                    aria-label="Paper"
-                                                    id="theme-paper"
-                                                />
-                                                <input
-                                                    class="seg join-item btn btn-sm flex-1"
-                                                    type="radio"
-                                                    name="theme"
-                                                    value="sepia"
-                                                    aria-label="Sepia"
-                                                    id="theme-sepia"
-                                                />
-                                                <input
-                                                    class="seg join-item btn btn-sm flex-1"
-                                                    type="radio"
-                                                    name="theme"
-                                                    value="ink"
-                                                    aria-label="Ink"
-                                                    id="theme-ink"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div class="flex flex-col gap-1.5">
-                                            <span
-                                                class="eyebrow text-base-content/60"
-                                                >Typeface</span
-                                            >
-                                            <div class="join w-full">
-                                                <input
-                                                    class="seg join-item btn btn-sm flex-1"
-                                                    type="radio"
-                                                    name="font"
-                                                    value="serif"
-                                                    aria-label="Serif"
-                                                    id="font-serif"
-                                                />
-                                                <input
-                                                    class="seg join-item btn btn-sm flex-1"
-                                                    type="radio"
-                                                    name="font"
-                                                    value="sans"
-                                                    aria-label="Sans"
-                                                    id="font-sans"
-                                                />
-                                                <input
-                                                    class="seg join-item btn btn-sm flex-1"
-                                                    type="radio"
-                                                    name="font"
-                                                    value="mono"
-                                                    aria-label="Mono"
-                                                    id="font-mono"
-                                                />
-                                            </div>
-                                        </div>
-                                        <label
-                                            class="flex flex-col gap-1.5"
-                                            for="size"
+                                Aa
+                            </button>
+                            <!-- The Aa button sits at the top right of the sticky bar, so the menu is pinned there. -->
+                            <div
+                                id="settings"
+                                popover
+                                class="settings w-[min(19rem,calc(100vw-32px))] rounded-box border border-base-300 bg-base-100 p-4 text-base-content shadow-xl"
+                            >
+                                <div class="flex flex-col gap-4">
+                                    <div class="flex flex-col gap-1.5">
+                                        <span
+                                            class="eyebrow text-base-content/60"
+                                            >Theme</span
                                         >
-                                            <span class="flex justify-between"
-                                                ><span
-                                                    class="eyebrow text-base-content/60"
-                                                    >Text size</span
-                                                ><span
-                                                    id="size-out"
-                                                    class="tabular text-xs text-base-content/70"
-                                                ></span
-                                            ></span>
+                                        <div class="join w-full">
                                             <input
-                                                id="size"
-                                                type="range"
-                                                min="15"
-                                                max="25"
-                                                step="1"
-                                                class="range range-xs w-full"
+                                                class="seg join-item btn btn-sm flex-1"
+                                                type="radio"
+                                                name="theme"
+                                                value="auto"
+                                                aria-label="Auto"
+                                                id="theme-auto"
                                             />
-                                        </label>
-                                        <label
-                                            class="flex flex-col gap-1.5"
-                                            for="measure"
-                                        >
-                                            <span class="flex justify-between"
-                                                ><span
-                                                    class="eyebrow text-base-content/60"
-                                                    >Line length</span
-                                                ><span
-                                                    id="measure-out"
-                                                    class="tabular text-xs text-base-content/70"
-                                                ></span
-                                            ></span>
                                             <input
-                                                id="measure"
-                                                type="range"
-                                                min="46"
-                                                max="84"
-                                                step="2"
-                                                class="range range-xs w-full"
+                                                class="seg join-item btn btn-sm flex-1"
+                                                type="radio"
+                                                name="theme"
+                                                value="paper"
+                                                aria-label="Paper"
+                                                id="theme-paper"
                                             />
-                                        </label>
-                                        <label
-                                            class="flex flex-col gap-1.5"
-                                            for="leading"
-                                        >
-                                            <span class="flex justify-between"
-                                                ><span
-                                                    class="eyebrow text-base-content/60"
-                                                    >Line spacing</span
-                                                ><span
-                                                    id="leading-out"
-                                                    class="tabular text-xs text-base-content/70"
-                                                ></span
-                                            ></span>
                                             <input
-                                                id="leading"
-                                                type="range"
-                                                min="1.4"
-                                                max="2.1"
-                                                step="0.05"
-                                                class="range range-xs w-full"
+                                                class="seg join-item btn btn-sm flex-1"
+                                                type="radio"
+                                                name="theme"
+                                                value="sepia"
+                                                aria-label="Sepia"
+                                                id="theme-sepia"
                                             />
-                                        </label>
-                                        <div
-                                            class="flex flex-wrap gap-x-3 gap-y-1.5 border-t border-base-300 pt-3 text-xs text-base-content/70"
-                                        >
-                                            <span
-                                                ><kbd class="kbd kbd-xs">/</kbd>
-                                                find file</span
-                                            >
-                                            <span
-                                                ><kbd class="kbd kbd-xs">[</kbd>
-                                                files</span
-                                            >
-                                            <span
-                                                ><kbd class="kbd kbd-xs">+</kbd>
-                                                <kbd class="kbd kbd-xs">−</kbd>
-                                                size</span
-                                            >
-                                            <span
-                                                ><kbd class="kbd kbd-xs">t</kbd>
-                                                theme</span
-                                            >
+                                            <input
+                                                class="seg join-item btn btn-sm flex-1"
+                                                type="radio"
+                                                name="theme"
+                                                value="ink"
+                                                aria-label="Ink"
+                                                id="theme-ink"
+                                            />
                                         </div>
                                     </div>
+                                    <div class="flex flex-col gap-1.5">
+                                        <span
+                                            class="eyebrow text-base-content/60"
+                                            >Typeface</span
+                                        >
+                                        <div class="join w-full">
+                                            <input
+                                                class="seg join-item btn btn-sm flex-1"
+                                                type="radio"
+                                                name="font"
+                                                value="serif"
+                                                aria-label="Serif"
+                                                id="font-serif"
+                                            />
+                                            <input
+                                                class="seg join-item btn btn-sm flex-1"
+                                                type="radio"
+                                                name="font"
+                                                value="sans"
+                                                aria-label="Sans"
+                                                id="font-sans"
+                                            />
+                                            <input
+                                                class="seg join-item btn btn-sm flex-1"
+                                                type="radio"
+                                                name="font"
+                                                value="mono"
+                                                aria-label="Mono"
+                                                id="font-mono"
+                                            />
+                                        </div>
+                                    </div>
+                                    <label
+                                        class="flex flex-col gap-1.5"
+                                        for="size"
+                                    >
+                                        <span class="flex justify-between"
+                                            ><span
+                                                class="eyebrow text-base-content/60"
+                                                >Text size</span
+                                            ><span
+                                                id="size-out"
+                                                class="tabular text-xs text-base-content/70"
+                                            ></span
+                                        ></span>
+                                        <input
+                                            id="size"
+                                            type="range"
+                                            min="15"
+                                            max="25"
+                                            step="1"
+                                            class="range range-xs w-full"
+                                        />
+                                    </label>
+                                    <label
+                                        class="flex flex-col gap-1.5"
+                                        for="measure"
+                                    >
+                                        <span class="flex justify-between"
+                                            ><span
+                                                class="eyebrow text-base-content/60"
+                                                >Line length</span
+                                            ><span
+                                                id="measure-out"
+                                                class="tabular text-xs text-base-content/70"
+                                            ></span
+                                        ></span>
+                                        <input
+                                            id="measure"
+                                            type="range"
+                                            min="46"
+                                            max="84"
+                                            step="2"
+                                            class="range range-xs w-full"
+                                        />
+                                    </label>
+                                    <label
+                                        class="flex flex-col gap-1.5"
+                                        for="leading"
+                                    >
+                                        <span class="flex justify-between"
+                                            ><span
+                                                class="eyebrow text-base-content/60"
+                                                >Line spacing</span
+                                            ><span
+                                                id="leading-out"
+                                                class="tabular text-xs text-base-content/70"
+                                            ></span
+                                        ></span>
+                                        <input
+                                            id="leading"
+                                            type="range"
+                                            min="1.4"
+                                            max="2.1"
+                                            step="0.05"
+                                            class="range range-xs w-full"
+                                        />
+                                    </label>
+                                    <div
+                                        class="flex flex-wrap gap-x-3 gap-y-1.5 border-t border-base-300 pt-3 text-xs text-base-content/70"
+                                    >
+                                        <span
+                                            ><kbd class="kbd kbd-xs">/</kbd>
+                                            find file</span
+                                        >
+                                        <span
+                                            ><kbd class="kbd kbd-xs">[</kbd>
+                                            files</span
+                                        >
+                                        <span
+                                            ><kbd class="kbd kbd-xs">+</kbd>
+                                            <kbd class="kbd kbd-xs">−</kbd>
+                                            size</span
+                                        >
+                                        <span
+                                            ><kbd class="kbd kbd-xs">t</kbd>
+                                            theme</span
+                                        >
+                                    </div>
                                 </div>
-                            </details>
+                            </div>
                         </div>
                     </div>
                     <progress
@@ -303,6 +310,8 @@
                     class="drawer-overlay"
                 ></label>
                 <aside
+                    id="sidebar"
+                    aria-label="Files"
                     class="flex min-h-full w-72 flex-col gap-3 border-e border-base-300 bg-base-200 px-2"
                     style="
                         padding-top: calc(
