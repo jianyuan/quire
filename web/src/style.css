@@ -18,6 +18,7 @@
 
 /* Layout: file tree on the left, one reading column, "On this page" on the right at wide sizes. */
 :root {
+  color-scheme: light dark;
   --font-serif: "Literata Variable", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --font-sans: "Atkinson Hyperlegible Next Variable", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -48,19 +49,19 @@
   }
 }
 /* Themes picked in the Aa menu override the system theme */
-body[data-reader="paper"] {
+:root[data-reader="paper"] {
   color-scheme: light;
   --color-base-100: oklch(98.7% 0.004 230); --color-base-200: oklch(96.2% 0.006 230); --color-base-300: oklch(91% 0.01 230); --color-base-content: oklch(25% 0.022 245);
   --color-primary: oklch(43% 0.1 240); --color-primary-content: oklch(97.5% 0.01 240);
   --color-neutral: oklch(28% 0.022 245); --color-neutral-content: oklch(97% 0.006 245);
 }
-body[data-reader="sepia"] {
+:root[data-reader="sepia"] {
   color-scheme: light;
   --color-base-100: oklch(95.2% 0.024 85); --color-base-200: oklch(92.4% 0.03 82); --color-base-300: oklch(86% 0.036 80); --color-base-content: oklch(31% 0.035 60);
   --color-primary: oklch(47% 0.1 45); --color-primary-content: oklch(97% 0.015 80);
   --color-neutral: oklch(33% 0.04 60); --color-neutral-content: oklch(95% 0.02 85);
 }
-body[data-reader="ink"] {
+:root[data-reader="ink"] {
   color-scheme: dark;
   --color-base-100: oklch(19.5% 0.012 250); --color-base-200: oklch(23% 0.014 250); --color-base-300: oklch(31% 0.016 250); --color-base-content: oklch(87% 0.012 240);
   --color-primary: oklch(77% 0.08 230); --color-primary-content: oklch(20% 0.02 240);
@@ -85,6 +86,10 @@ body {
   top: env(safe-area-inset-top, 0px);
   background: color-mix(in oklab, var(--color-base-100) 88%, transparent);
   backdrop-filter: blur(10px);
+}
+.settings {
+  inset: calc(env(safe-area-inset-top, 0px) + 4rem) max(16px, env(safe-area-inset-right, 0px)) auto auto;
+  margin: 0;
 }
 .wordmark { font-family: var(--font-serif); font-style: italic; font-weight: 600; font-size: 1.25rem; letter-spacing: -0.01em; }
 .eyebrow { font-size: 0.75rem; letter-spacing: 0.09em; text-transform: uppercase; font-variant-numeric: tabular-nums; }

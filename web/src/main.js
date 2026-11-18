@@ -537,9 +537,6 @@ function navigate(url) {
 }
 
 document.addEventListener("click", (e) => {
-  const details = $("#settings");
-  if (details.open && !details.contains(e.target)) details.open = false;
-
   const a = e.target.closest("a[data-internal], a[data-anchor]");
   if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
   e.preventDefault();
@@ -586,7 +583,11 @@ function update() {
   for (const h of headings) {
     if (h.getBoundingClientRect().top < innerHeight * 0.3) active = h.id; else break;
   }
-  document.querySelectorAll(".toc a").forEach((a) => a.classList.toggle("is-active", a.dataset.target === active));
+  document.querySelectorAll(".toc a").forEach((a) => {
+    const on = a.dataset.target === active;
+    a.classList.toggle("is-active", on);
+    if (on) a.setAttribute("aria-current", "location"); else a.removeAttribute("aria-current");
+  });
   clearTimeout(saveTimer);
   saveTimer = setTimeout(savePosition, 400);
 }
@@ -608,8 +609,9 @@ window.addEventListener("pagehide", savePosition);
 /* ---------- Settings ---------- */
 
 function applySettings() {
-  if (settings.theme === "auto") delete document.body.dataset.reader;
-  else document.body.dataset.reader = settings.theme;
+  // On <html>, so the page's own scrollbar and background follow the theme too.
+  if (settings.theme === "auto") delete document.documentElement.dataset.reader;
+  else document.documentElement.dataset.reader = settings.theme;
   const s = document.documentElement.style;
   s.setProperty("--reader-font", FONTS[settings.font] || FONTS.serif);
   s.setProperty("--reader-size", settings.size + "px");
@@ -642,10 +644,38 @@ $("#leading").addEventListener("input", (e) => changeSetting("leading", Number(e
 
 /* ---------- Sidebar and keys ---------- */
 
-function closeDrawer() { $("#sidebar-toggle").checked = false; }
+const wide = matchMedia("(min-width: 64rem)");
+
+function setDrawer(open) { $("#sidebar-toggle").checked = open; syncDrawer(); }
+function closeDrawer() { setDrawer(false); }
+
+// Below lg the sidebar slides over the page as a modal drawer: the page
+// behind it goes inert, and focus moves into it and back to its toggle.
+function syncDrawer() {
+  const toggle = $("#sidebar-toggle");
+  const side = $("#sidebar");
+  const content = $(".drawer-content");
+  const modal = toggle.checked && !wide.matches;
+  if (content.inert === modal) return;
+  content.inert = modal;
+  if (modal) {
+    side.setAttribute("role", "dialog");
+    side.setAttribute("aria-modal", "true");
+    $("#filter").focus();
+  } else {
+    side.removeAttribute("role");
+    side.removeAttribute("aria-modal");
+    if (side.contains(document.activeElement)) toggle.focus();
+  }
+}
+
+$("#sidebar-toggle").addEventListener("change", syncDrawer);
+wide.addEventListener("change", closeDrawer);
 
 $("#filter").addEventListener("input", renderTree);
 $("#filter").addEventListener("keydown", (e) => {
+  // Enter and Escape also confirm or cancel IME composition; keyCode 229 catches Safari, which clears isComposing first.
+  if (e.isComposing || e.keyCode === 229) return;
   if (e.key === "Enter") {
     const first = $("#tree a[data-path]");
     if (first) { $("#filter").value = ""; navigate(first.getAttribute("href")); renderTree(); }
@@ -659,12 +689,12 @@ $("#filter").addEventListener("keydown", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.target.closest("input:not([type=radio]):not([type=range]), textarea, [contenteditable]")) return;
-  if (e.key === "/") { e.preventDefault(); $("#sidebar-toggle").checked = true; $("#filter").focus(); }
-  else if (e.key === "[") { const t = $("#sidebar-toggle"); t.checked = !t.checked; }
+  if (e.key === "/") { e.preventDefault(); setDrawer(true); $("#filter").focus(); }
+  else if (e.key === "[") setDrawer(!$("#sidebar-toggle").checked);
   else if (e.key === "+" || e.key === "=") changeSetting("size", Math.min(25, settings.size + 1));
   else if (e.key === "-" || e.key === "_") changeSetting("size", Math.max(15, settings.size - 1));
   else if (e.key === "t") changeSetting("theme", THEMES[(THEMES.indexOf(settings.theme) + 1) % THEMES.length]);
-  else if (e.key === "Escape") { $("#settings").open = false; closeDrawer(); }
+  else if (e.key === "Escape") closeDrawer();
 });
 
 /* ---------- Start ---------- */
