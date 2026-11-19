@@ -131,8 +131,10 @@ async function readFile(site: Site, p: string) {
   return res.text();
 }
 
+// A folder's README, or else its index.
 function indexOf(site: Site, dir: string) {
-  return site.files.find((f) => dirname(f) === dir && isIndex(f)) || null;
+  const found = site.files.filter((f) => dirname(f) === dir && isIndex(f));
+  return found.find((f) => /^readme\./i.test(basename(f))) ?? found[0] ?? null;
 }
 
 // Works out what a path inside the directory points at, accepting
@@ -319,11 +321,12 @@ const byName = new Intl.Collator("en-GB", {
 });
 const sortedDirs = (node: Dir) =>
   [...node.dirs.values()].sort((a, b) => byName.compare(a.name, b.name));
+// README first, then index, then the rest by name.
+const rank = (p: string) =>
+  isIndex(p) ? (/^readme\./i.test(basename(p)) ? 2 : 1) : 0;
 const sortedFiles = (node: Dir) =>
   [...node.files].sort(
-    (a, b) =>
-      Number(isIndex(b)) - Number(isIndex(a)) ||
-      byName.compare(basename(a), basename(b)),
+    (a, b) => rank(b) - rank(a) || byName.compare(basename(a), basename(b)),
   );
 
 // Reading order for previous/next: a folder's own files, then its subfolders.
@@ -450,24 +453,38 @@ async function loadTexts(site: Site) {
   return texts;
 }
 
-function TreeNode({ node, file }: { node: Dir; file?: string }) {
+function TreeNode({
+  site,
+  node,
+  file,
+}: {
+  site: Site;
+  node: Dir;
+  file?: string;
+}) {
+  const files = sortedFiles(node);
+  const link = (f: string) => (
+    <li key={f}>
+      <FileLink f={f} active={f === file} />
+    </li>
+  );
+  // A folder's README or index goes above its subfolders.
   return (
     <>
+      {files.filter(isIndex).map(link)}
       {sortedDirs(node).map((d) => (
         <li key={d.path}>
           <details data-dir={d.path}>
-            <summary>{d.name}</summary>
+            <summary data-index={indexOf(site, d.path) ?? undefined}>
+              {d.name}
+            </summary>
             <ul>
-              <TreeNode node={d} file={file} />
+              <TreeNode site={site} node={d} file={file} />
             </ul>
           </details>
         </li>
       ))}
-      {sortedFiles(node).map((f) => (
-        <li key={f}>
-          <FileLink f={f} active={f === file} />
-        </li>
-      ))}
+      {files.filter((f) => !isIndex(f)).map(link)}
     </>
   );
 }
@@ -559,7 +576,7 @@ const Tree = memo(function Tree({
           ))}
         </>
       ) : (
-        <TreeNode node={site.tree} file={file} />
+        <TreeNode site={site} node={site.tree} file={file} />
       )}
     </ul>
   );
@@ -1009,6 +1026,18 @@ function App() {
 
   useEffect(() => {
     document.addEventListener("click", (e) => {
+      // Opening a folder in the tree also shows its README.
+      const folder = (e.target as Element).closest<HTMLElement>(
+        "summary[data-index]",
+      );
+      if (
+        folder &&
+        !(folder.parentElement as HTMLDetailsElement).open &&
+        e.button === 0
+      ) {
+        navigate(pageUrl(folder.dataset.index!));
+        return;
+      }
       const a = (e.target as Element).closest<HTMLAnchorElement>(
         "a[data-internal], a[data-anchor]",
       );
