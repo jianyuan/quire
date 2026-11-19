@@ -321,11 +321,12 @@ const byName = new Intl.Collator("en-GB", {
 });
 const sortedDirs = (node: Dir) =>
   [...node.dirs.values()].sort((a, b) => byName.compare(a.name, b.name));
+// README first, then index, then the rest by name.
+const rank = (p: string) =>
+  isIndex(p) ? (/^readme\./i.test(basename(p)) ? 2 : 1) : 0;
 const sortedFiles = (node: Dir) =>
   [...node.files].sort(
-    (a, b) =>
-      Number(isIndex(b)) - Number(isIndex(a)) ||
-      byName.compare(basename(a), basename(b)),
+    (a, b) => rank(b) - rank(a) || byName.compare(basename(a), basename(b)),
   );
 
 // Reading order for previous/next: a folder's own files, then its subfolders.
@@ -461,8 +462,16 @@ function TreeNode({
   node: Dir;
   file?: string;
 }) {
+  const files = sortedFiles(node);
+  const link = (f: string) => (
+    <li key={f}>
+      <FileLink f={f} active={f === file} />
+    </li>
+  );
+  // A folder's README or index goes above its subfolders.
   return (
     <>
+      {files.filter(isIndex).map(link)}
       {sortedDirs(node).map((d) => (
         <li key={d.path}>
           <details data-dir={d.path}>
@@ -475,11 +484,7 @@ function TreeNode({
           </details>
         </li>
       ))}
-      {sortedFiles(node).map((f) => (
-        <li key={f}>
-          <FileLink f={f} active={f === file} />
-        </li>
-      ))}
+      {files.filter((f) => !isIndex(f)).map(link)}
     </>
   );
 }
