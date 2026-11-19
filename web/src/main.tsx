@@ -1166,12 +1166,30 @@ function App() {
   function onFilterKey(e: KeyboardEvent) {
     // Enter and Escape also confirm or cancel IME composition; keyCode 229 catches Safari, which clears isComposing first.
     if (e.isComposing || e.keyCode === 229) return;
+    const links = [
+      ...side.current!.querySelectorAll<HTMLAnchorElement>(
+        "#tree a[data-path]",
+      ),
+    ];
+    const at = links.findIndex((a) => a.classList.contains("menu-active"));
     if (e.key === "Enter") {
-      const first = side.current!.querySelector("#tree a[data-path]");
-      if (first) {
+      const pick = links[Math.max(at, 0)];
+      if (pick) {
         setQuery("");
-        navigate(first.getAttribute("href")!);
+        navigate(pick.getAttribute("href")!);
       }
+    } else if (query.trim() && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      // Opens the next or previous result; the tree scrolls it into view.
+      e.preventDefault();
+      const next =
+        links[
+          Math.max(
+            0,
+            Math.min(links.length - 1, at + (e.key === "ArrowDown" ? 1 : -1)),
+          )
+        ];
+      if (next && links.indexOf(next) !== at)
+        navigate(next.getAttribute("href")!);
     } else if (e.key === "Escape") {
       setQuery("");
       filter.current!.blur();
