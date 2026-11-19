@@ -1,16 +1,16 @@
 import { readFileSync, readdirSync } from "node:fs";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 
-const pkg = JSON.parse(readFileSync(new URL("package.json", import.meta.url)));
+const pkg = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "utf8"));
 
 // Everything in "dependencies" ships in dist/. Vite's own build.license
 // misses packages that only CSS imports (the fonts, Tailwind and daisyUI),
 // so this plugin writes every dependency's licence to dist/licenses.md.
 // The Go server embeds it and serves it at /licenses. Build tools belong
 // in devDependencies.
-function licenses() {
-  let mode;
+function licenses(): Plugin {
+  let mode: string;
   return {
     name: "licenses",
     apply: "build",
@@ -20,7 +20,7 @@ function licenses() {
     generateBundle() {
       const sections = Object.keys(pkg.dependencies).sort().map((name) => {
         const dir = new URL(`node_modules/${name}/`, import.meta.url);
-        const meta = JSON.parse(readFileSync(new URL("package.json", dir)));
+        const meta = JSON.parse(readFileSync(new URL("package.json", dir), "utf8"));
         if (Object.keys(meta.dependencies ?? {}).length) {
           this.error(`${name} has its own dependencies; list their licenses too`);
         }

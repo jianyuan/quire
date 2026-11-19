@@ -4,7 +4,7 @@ ADDR       ?= 127.0.0.1:8080
 GOFLAGS    := -trimpath -ldflags="-s -w"
 GORELEASER := go tool goreleaser
 
-WEB_SRC := web/index.html web/vite.config.js web/package.json $(shell find web/src -type f)
+WEB_SRC := web/index.html web/vite.config.ts web/tsconfig.json web/package.json $(shell find web/src -type f)
 GO_SRC  := go.mod $(wildcard *.go cmd/quire/*.go)
 
 .DEFAULT_GOAL := help
