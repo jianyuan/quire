@@ -883,6 +883,13 @@ function App() {
   const [query, setQuery] = useState("");
   const [drawer, setDrawer] = useState(false);
   const [wide, setWide] = useState(wideQuery.matches);
+  // Desktop only: the sidebar and the side TOC can be folded away.
+  const [folded, setFolded] = useState({
+    side: false,
+    toc: false,
+    ...store.get("quire.folded", {}),
+  });
+  useEffect(() => store.set("quire.folded", folded), [folded]);
   const [progress, setProgress] = useState<{
     ratio: number;
     active: string | null;
@@ -896,6 +903,12 @@ function App() {
   const toggle = useRef<HTMLInputElement>(null);
   const side = useRef<HTMLElement>(null);
   const docBody = useRef<HTMLDivElement>(null);
+
+  // Desktop folds the sidebar away; below lg it opens the drawer.
+  function toggleSide() {
+    if (wideQuery.matches) setFolded((f) => ({ ...f, side: !f.side }));
+    else setDrawer((d) => !d);
+  }
 
   async function go(site: Site | null, opts: RouteOptions = {}) {
     const token = ++loadToken;
@@ -1111,8 +1124,10 @@ function App() {
       if (e.key === "/") {
         e.preventDefault();
         setDrawer(true);
+        setFolded((f) => ({ ...f, side: false }));
         filter.current!.focus();
-      } else if (e.key === "[") setDrawer((d) => !d);
+      } else if (e.key === "[") toggleSide();
+      else if (e.key === "]") setFolded((f) => ({ ...f, toc: !f.toc }));
       else if (e.key === "+" || e.key === "=")
         changeSetting((s) => ({ size: Math.min(25, s.size + 1) }));
       else if (e.key === "-" || e.key === "_")
@@ -1250,8 +1265,25 @@ function App() {
     </label>
   );
 
+  const panelIcon = (x: number) => (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      stroke-linecap="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d={`M${x} 4v16`} />
+    </svg>
+  );
+  const foldToc = () => setFolded((f) => ({ ...f, toc: !f.toc }));
+
   return (
-    <div class="drawer lg:drawer-open">
+    <div class={folded.side ? "drawer" : "drawer lg:drawer-open"}>
       <input
         id="sidebar-toggle"
         ref={toggle}
@@ -1264,10 +1296,12 @@ function App() {
         <header class="topbar sticky z-5 border-b border-base-300">
           <div class="gutter navbar min-h-14 gap-2">
             <div class="flex min-w-0 flex-1 items-center gap-1">
-              <label
-                for="sidebar-toggle"
-                class="btn btn-ghost btn-square btn-sm drawer-button lg:hidden"
-                aria-label="Show files"
+              <button
+                type="button"
+                onClick={toggleSide}
+                class="btn btn-ghost btn-square btn-sm"
+                aria-label="Toggle files"
+                aria-expanded={wide ? !folded.side : drawer}
                 title="Files ( [ )"
               >
                 <svg
@@ -1280,9 +1314,10 @@ function App() {
                   stroke-linecap="round"
                   aria-hidden="true"
                 >
-                  <path d="M4 6h16M4 12h10M4 18h13" />
+                  <rect x="3" y="4" width="18" height="16" rx="2" />
+                  <path d="M9 4v16" />
                 </svg>
-              </label>
+              </button>
               <nav
                 id="crumbs"
                 class="breadcrumbs min-w-0 py-0 text-sm"
@@ -1295,13 +1330,24 @@ function App() {
                 </ul>
               </nav>
             </div>
-            <div class="flex shrink-0 items-baseline gap-1">
+            <div class="flex shrink-0 items-center gap-1">
               <span
                 id="time-left"
                 class="tabular hidden text-xs text-base-content/60 sm:inline"
               >
                 {timeLeft}
               </span>
+              <button
+                type="button"
+                onClick={foldToc}
+                class="btn btn-ghost btn-square btn-sm hidden xl:inline-flex"
+                aria-label="Toggle contents"
+                aria-expanded={!folded.toc}
+                title="Contents ( ] )"
+                hidden={!showToc}
+              >
+                {panelIcon(15)}
+              </button>
               <button
                 type="button"
                 popovertarget="settings"
@@ -1358,6 +1404,7 @@ function App() {
                     </span>
                     <span>
                       <kbd class="kbd kbd-xs">[</kbd> files
+                      <kbd class="kbd kbd-xs">]</kbd> contents
                     </span>
                     <span>
                       <kbd class="kbd kbd-xs">+</kbd>{" "}
@@ -1429,7 +1476,7 @@ function App() {
           </article>
           <aside
             id="toc-side"
-            class="hidden w-56 shrink-0 xl:block"
+            class={folded.toc ? "hidden" : "hidden w-56 shrink-0 xl:block"}
             hidden={!showToc}
           >
             <nav
