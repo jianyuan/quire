@@ -7,7 +7,9 @@
 //
 //	quire                             # serve the current directory on http://127.0.0.1:8080
 //	quire ~/docs                      # serve another directory
-//	quire -addr :3000 ~/notes         # listen on every interface, port 3000
+//	quire -port 3000 ~/notes          # listen on port 3000
+//	quire -host 0.0.0.0 ~/notes       # listen on every interface
+//	quire help                        # show usage
 //
 // Routes:
 //
@@ -25,13 +27,14 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
-	"log"
+	"net"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,12 +44,17 @@ import (
 var skipDirs = map[string]bool{"node_modules": true, "vendor": true}
 
 func main() {
-	addr := flag.String("addr", "127.0.0.1:8080", "address to listen on")
-	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "usage: quire [-addr host:port] [directory]\n")
-		flag.PrintDefaults()
+	host := flag.String("host", "127.0.0.1", "host or interface to listen on")
+	port := flag.Int("port", 8080, "port to listen on")
+	addr := flag.String("addr", "", "host:port to listen on (overrides -host and -port)")
+	flag.Usage = usage
+	if len(os.Args) > 1 && os.Args[1] == "help" {
+		os.Args[1] = "-h"
 	}
 	flag.Parse()
+	if *addr == "" {
+		*addr = net.JoinHostPort(*host, strconv.Itoa(*port))
+	}
 
 	dir := "."
 	if flag.NArg() > 0 {
@@ -54,27 +62,27 @@ func main() {
 	}
 	abs, err := filepath.Abs(dir)
 	if err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	// os.Root confines every file access to the directory, so paths like
 	// /raw/../../etc/passwd can't escape it.
 	root, err := os.OpenRoot(abs)
 	if err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	fsys := root.FS()
 
 	web, err := fs.Sub(quire.Dist, "web/dist")
 	if err != nil {
-		log.Fatal(err)
+		fatal(err)
 	}
 	page, err := fs.ReadFile(web, "index.html")
 	if err != nil {
-		log.Fatal("web/dist/index.html is missing; run make build: ", err)
+		fatal(fmt.Errorf("web/dist/index.html is missing; run make build: %w", err))
 	}
 	webLicenses, err := fs.ReadFile(web, "licenses.md")
 	if err != nil {
-		log.Fatal("web/dist/licenses.md is missing; run make build: ", err)
+		fatal(fmt.Errorf("web/dist/licenses.md is missing; run make build: %w", err))
 	}
 	licenses := slices.Concat(quire.Notices, []byte{'\n'}, webLicenses)
 
@@ -159,8 +167,47 @@ func main() {
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
-	log.Printf("Reading %s on http://%s", abs, *addr)
-	log.Fatal(srv.ListenAndServe())
+	// Listen first so a busy port fails with a clear message before the banner.
+	ln, err := net.Listen("tcp", *addr)
+	if err != nil {
+		fatal(err)
+	}
+	fmt.Printf("\n  %s  %s\n\n  %s  %s\n  %s  %s\n\n  %s\n\n",
+		paint("1;35", "quire"), paint("2", "ready"),
+		paint("36", "Reading"), paint("1", abs),
+		paint("36", "Local  "), paint("4;32", "http://"+ln.Addr().String()),
+		paint("2", "Press Ctrl+C to stop"))
+	fatal(srv.Serve(ln))
+}
+
+// paint wraps s in an ANSI style, unless stdout isn't a terminal or NO_COLOR is set.
+func paint(code, s string) string { return style(os.Stdout, code, s) }
+
+func style(f *os.File, code, s string) string {
+	if fi, err := f.Stat(); err != nil || fi.Mode()&os.ModeCharDevice == 0 || os.Getenv("NO_COLOR") != "" {
+		return s
+	}
+	return "\x1b[" + code + "m" + s + "\x1b[0m"
+}
+
+func fatal(err error) {
+	fmt.Fprintln(os.Stderr, style(os.Stderr, "1;31", "error:"), err)
+	os.Exit(1)
+}
+
+func usage() {
+	out := flag.CommandLine.Output()
+	f, _ := out.(*os.File)
+	if f == nil {
+		f = os.Stderr
+	}
+	c := func(code, s string) string { return style(f, code, s) }
+	fmt.Fprintf(out, "%s  serve a folder of Markdown files in the Quire reader\n\n", c("1;35", "quire"))
+	fmt.Fprintf(out, "%s\n  quire [options] [directory]\n  quire help\n\n%s\n", c("1;33", "Usage"), c("1;33", "Options"))
+	flag.VisitAll(func(fl *flag.Flag) {
+		fmt.Fprintf(out, "  %s  %s %s\n", c("36", fmt.Sprintf("-%-5s", fl.Name)), fl.Usage, c("2", "(default "+strconv.Quote(fl.DefValue)+")"))
+	})
+	fmt.Fprintf(out, "\n%s\n  quire ~/docs\n  quire -port 3000 ~/notes\n  quire -host 0.0.0.0 .\n", c("1;33", "Examples"))
 }
 
 // markdownFiles lists every Markdown file under fsys. It skips hidden

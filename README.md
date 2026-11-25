@@ -57,7 +57,9 @@ Then run it:
 ```sh
 quire                          # read this folder on http://127.0.0.1:8080
 quire ~/notes                  # read another folder
-quire -addr :3000 ~/notes      # listen on port 3000 on every network interface
+quire -port 3000 ~/notes           # use another port
+quire -host 0.0.0.0 ~/notes         # listen on every network interface
+quire help                          # list all options
 ```
 
 To try it without installing, use `go run`. Go downloads and builds it on the first run, then reuses the cached build.
@@ -74,7 +76,7 @@ go run ./cmd/quire ~/notes
 
 Prebuilt binaries for macOS, Linux and Windows are on the [releases page](https://github.com/jianyuan/quire/releases).
 
-Quire only reads files inside the folder you give it. It listens on `127.0.0.1` by default, so other machines can't reach it. Use `-addr` with care, because anyone who can reach the port can read the files in the folder.
+Quire only reads files inside the folder you give it. It listens on `127.0.0.1` by default, so other machines can't reach it. Use `-host` with care, because anyone who can reach the port can read the files in the folder.
 
 ## Build it
 
