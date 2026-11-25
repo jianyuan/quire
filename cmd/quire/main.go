@@ -131,7 +131,7 @@ func main() {
 		if isMarkdown(name) {
 			w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
 		}
-		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		http.ServeFileFS(w, r, fsys, name)
 	})
